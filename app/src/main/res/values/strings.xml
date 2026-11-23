@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Spam Call Blocker</string>
+    <string name="notification_channel_protection_name">Bảo vệ cuộc gọi chạy ngầm</string>
+    <string name="notification_channel_protection_desc">Giữ dịch vụ chặn cuộc gọi rác hoạt động liên tục không bị hệ thống tắt</string>
+    <string name="notification_channel_blocked_name">Thông báo cuộc gọi bị chặn</string>
+    <string name="notification_channel_blocked_desc">Thông báo khi có cuộc gọi rác bị chặn tự động</string>
+</resources>

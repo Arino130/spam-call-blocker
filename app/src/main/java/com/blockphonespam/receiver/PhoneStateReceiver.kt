@@ -8,8 +8,6 @@ import android.util.Log
 import com.blockphonespam.BlockPhoneSpamApp
 import com.blockphonespam.domain.PhoneNumberMatcher
 import com.blockphonespam.util.CallEndHelper
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class PhoneStateReceiver : BroadcastReceiver() {
@@ -27,11 +25,12 @@ class PhoneStateReceiver : BroadcastReceiver() {
         Log.d(TAG, "Phone state changed: $stateStr, incomingNumber: $incomingNumber")
 
         if (stateStr == TelephonyManager.EXTRA_STATE_RINGING) {
-            val repository = (context.applicationContext as BlockPhoneSpamApp).repository
+            val app = context.applicationContext as BlockPhoneSpamApp
+            val pendingResult = goAsync()
 
-            CoroutineScope(Dispatchers.IO).launch {
+            app.appScope.launch {
                 try {
-                    val enabledPrefixes = repository.getEnabledPrefixes()
+                    val enabledPrefixes = app.repository.getEnabledPrefixes()
 
                     if (!incomingNumber.isNullOrBlank()) {
                         val matchedPrefix = PhoneNumberMatcher.findMatchingPrefix(incomingNumber, enabledPrefixes)
@@ -42,11 +41,14 @@ class PhoneStateReceiver : BroadcastReceiver() {
 
                             val normalizedNumber = PhoneNumberMatcher.normalizePhoneNumber(incomingNumber)
                             val displayNumber = normalizedNumber.ifEmpty { incomingNumber }
-                            repository.recordBlockedCall(displayNumber, matchedPrefix)
+                            app.repository.recordBlockedCall(displayNumber, matchedPrefix)
+                            Log.i(TAG, "Fallback Receiver successfully recorded blocked call: $displayNumber")
                         }
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error processing incoming call in PhoneStateReceiver", e)
+                } finally {
+                    pendingResult.finish()
                 }
             }
         }

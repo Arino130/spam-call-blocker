@@ -52,7 +52,8 @@ class SpamCallScreeningService : CallScreeningService() {
             return
         }
 
-        val repository = (application as BlockPhoneSpamApp).repository
+        val app = application as BlockPhoneSpamApp
+        val repository = app.repository
 
         serviceScope.launch {
             try {
@@ -65,6 +66,22 @@ class SpamCallScreeningService : CallScreeningService() {
                     Log.i(TAG, "MATCHED SPAM PREFIX: $matchedPrefix for number: $rawNumber. Blocking call!")
                     val normalizedNumber = PhoneNumberMatcher.normalizePhoneNumber(rawNumber)
                     val displayNumber = normalizedNumber.ifEmpty { rawNumber }
+
+                    // Ghi vào CSDL bằng appScope của Application để không bị hủy coroutine khi service bị unbind
+                    app.appScope.launch {
+                        try {
+                            repository.recordBlockedCall(
+                                phoneNumber = displayNumber,
+                                matchedPrefix = matchedPrefix
+                            )
+                            Log.i(TAG, "Successfully recorded blocked call into DB: $displayNumber")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to record blocked call into DB", e)
+                        }
+                    }
+
+                    // Hiển thị thông báo cuộc gọi bị chặn
+                    showBlockedNotification(displayNumber, matchedPrefix)
 
                     // Phản hồi cho hệ điều hành từ chối cuộc gọi
                     val responseBuilder = CallResponse.Builder()
@@ -82,12 +99,6 @@ class SpamCallScreeningService : CallScreeningService() {
 
                     // Chủ động ngắt cuộc gọi ngay bằng TelecomManager/ITelephony đề phòng ROM hoặc SIM ảo bỏ qua phản hồi
                     CallEndHelper.endCall(applicationContext)
-
-                    repository.recordBlockedCall(
-                        phoneNumber = displayNumber,
-                        matchedPrefix = matchedPrefix
-                    )
-                    showBlockedNotification(displayNumber, matchedPrefix)
                 } else {
                     Log.d(TAG, "Number $rawNumber did not match any spam prefix. Allowing call.")
                     allowCall(callDetails)

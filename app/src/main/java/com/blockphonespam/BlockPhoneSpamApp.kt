@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 class BlockPhoneSpamApp : Application() {
 
-    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val database: AppDatabase by lazy { AppDatabase.getInstance(this) }
     val repository: SpamBlockRepository by lazy { SpamBlockRepository(database) }
